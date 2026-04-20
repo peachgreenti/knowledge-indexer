@@ -55,6 +55,14 @@ class LLMClient:
             api_key=settings.llm_api_key,
             timeout=settings.llm_request_timeout,
         )
+        # 嵌入模型可使用独立服务商
+        emb_url = settings.embedding_base_url or settings.llm_base_url
+        emb_key = settings.embedding_api_key or settings.llm_api_key
+        self._embedding_client = OpenAI(
+            base_url=emb_url,
+            api_key=emb_key,
+            timeout=settings.llm_request_timeout,
+        )
 
     def generate_summary(self, title: str, content: str) -> str:
         """
@@ -124,7 +132,7 @@ class LLMClient:
         """
         for attempt in range(self._settings.max_retries):
             try:
-                response = self._client.embeddings.create(
+                response = self._embedding_client.embeddings.create(
                     model=self._settings.llm_embedding_model,
                     input=text,
                 )
@@ -160,7 +168,7 @@ class LLMClient:
             batch = texts[i : i + batch_size]
             for attempt in range(self._settings.max_retries):
                 try:
-                    response = self._client.embeddings.create(
+                    response = self._embedding_client.embeddings.create(
                         model=self._settings.llm_embedding_model,
                         input=batch,
                     )

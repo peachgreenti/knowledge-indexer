@@ -31,11 +31,21 @@ class Settings(BaseSettings):
     )
     llm_api_key: str = Field(..., description="LLM API 密钥")
     llm_model: str = Field("gpt-4o-mini", description="用于生成摘要和标签的模型")
+    llm_max_tokens: int = Field(2048, description="LLM 最大生成 token 数")
+    llm_temperature: float = Field(0.3, description="LLM 生成温度")
+
+    # ── 嵌入模型配置（支持独立服务商）─────────────────────
     llm_embedding_model: str = Field(
         "text-embedding-3-small", description="用于生成向量嵌入的模型"
     )
-    llm_max_tokens: int = Field(2048, description="LLM 最大生成 token 数")
-    llm_temperature: float = Field(0.3, description="LLM 生成温度")
+    embedding_base_url: str | None = Field(
+        None,
+        description="嵌入 API 基础 URL（为空则使用 llm_base_url）",
+    )
+    embedding_api_key: str | None = Field(
+        None,
+        description="嵌入 API 密钥（为空则使用 llm_api_key）",
+    )
 
     # ── 索引配置 ──────────────────────────────────────────
     data_dir: Path = Field(

@@ -18,6 +18,9 @@ class FeishuClient:
 
     所有 API 调用委托给 lark-cli（https://github.com/larksuite/cli），
     利用其内置的认证管理、安全保护、分页处理和结构化输出能力。
+
+    lark-cli 返回结构统一为 {"ok": true/false, "data": {...}} 或
+    {"code": 0, "data": {...}, "msg": "success"}，本客户端自动提取 data 层。
     """
 
     def __init__(self, settings: Settings) -> None:
@@ -39,13 +42,24 @@ class FeishuClient:
         )
 
     def _cli_json(self, args: list[str]) -> dict:
-        """执行 lark-cli 命令并返回 JSON 结果"""
+        """执行 lark-cli 命令并返回 data 层数据"""
         result = self._cli(args + ["--format", "json"])
         if result.returncode != 0:
             raise RuntimeError(
                 f"lark-cli 执行失败: {result.stderr.strip() or result.stdout.strip()}"
             )
-        return json.loads(result.stdout)
+        raw = json.loads(result.stdout)
+
+        # 检查 lark-cli 是否返回错误
+        if raw.get("ok") is False:
+            err = raw.get("error", {})
+            raise RuntimeError(
+                f"lark-cli 错误: {err.get('message', raw)}"
+            )
+
+        # 提取 data 层（统一结构 {"code":0,"data":{...}} 或 {"ok":true,"data":{...}}）
+        data = raw.get("data", raw)
+        return data
 
     def close(self) -> None:
         """lark-cli 无需关闭连接"""
@@ -142,10 +156,10 @@ class FeishuClient:
             logger.warning("获取文档内容失败 (token: %s): %s", obj_token, e)
             return ""
 
-        # lark-cli +fetch 返回的 JSON 结构中包含 markdown 内容
-        content = data.get("content", "")
+        # lark-cli +fetch 返回 {"data": {"markdown": "...", "title": "..."}}
+        content = data.get("markdown", "")
         if not content:
-            # 尝试从 blocks 中提取文本
+            # 降级：尝试从 blocks 中提取文本
             content = self._extract_from_blocks(data)
         return content
 
@@ -173,7 +187,9 @@ class FeishuClient:
                 cells = block.get("property", {}).get("cells", [])
                 for row in cells:
                     for cell in row:
-                        cell_text = cell.get("text_key", "") if isinstance(cell, dict) else ""
+                        cell_text = (
+                            cell.get("text_key", "") if isinstance(cell, dict) else ""
+                        )
                         if cell_text:
                             texts.append(cell_text)
             # 子块
