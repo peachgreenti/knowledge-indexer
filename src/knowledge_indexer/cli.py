@@ -68,13 +68,8 @@ def init() -> None:
     """生成 .env 配置文件模板"""
     from pathlib import Path
 
-    env_template = """# ── 飞书应用凭证 ──────────────────────────────────
-# 在飞书开放平台 (https://open.feishu.cn) 创建自建应用后获取
-KI_FEISHU_APP_ID=your_app_id_here
-KI_FEISHU_APP_SECRET=your_app_secret_here
-
-# ── 知识库配置 ────────────────────────────────────────
-# 要扫描的知识库空间 ID
+    env_template = """# ── 知识库配置 ────────────────────────────────────────
+# 要扫描的知识库空间 ID（运行 knowledge-indexer spaces 查看）
 KI_WIKI_SPACE_ID=your_space_id_here
 
 # ── LLM 配置（OpenAI 兼容 API）───────────────────────
@@ -109,14 +104,13 @@ KI_LLM_EMBEDDING_MODEL=text-embedding-3-small
     console.print(
         Panel(
             f"配置模板已生成: [cyan]{env_path}[/cyan]\n\n"
-            "请编辑 .env 文件，填入你的飞书应用凭证和 LLM API 密钥。\n\n"
+            "请编辑 .env 文件，填入你的 LLM API 密钥和知识库空间 ID。\n\n"
+            "前置条件:\n"
+            "  1. 安装并配置 lark-cli: [cyan]npm install -g @larksuite/cli[/cyan]\n"
+            "  2. 运行 [cyan]lark-cli config init[/cyan] 和 [cyan]lark-cli auth login[/cyan]\n\n"
             "获取知识库空间 ID:\n"
             "  1. 运行 [cyan]knowledge-indexer spaces[/cyan] 查看可用空间\n"
-            "  2. 或在飞书知识库 URL 中找到空间 ID\n\n"
-            "飞书应用所需权限:\n"
-            "  • wiki:space:readonly\n"
-            "  • wiki:node:readonly\n"
-            "  • docx:document:readonly",
+            "  2. 或在飞书知识库 URL 中找到空间 ID",
             title="[green]配置初始化完成[/green]",
             border_style="green",
         )

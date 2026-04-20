@@ -21,10 +21,6 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # ── 飞书应用凭证 ──────────────────────────────────────
-    feishu_app_id: str = Field(..., description="飞书应用 App ID")
-    feishu_app_secret: str = Field(..., description="飞书应用 App Secret")
-
     # ── 知识库配置 ────────────────────────────────────────
     wiki_space_id: str = Field(..., description="要扫描的知识库空间 ID")
 

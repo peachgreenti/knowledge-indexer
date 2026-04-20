@@ -24,7 +24,7 @@
 - [快速开始](#快速开始)
 - [命令参考](#命令参考)
 - [配置说明](#配置说明)
-- [飞书应用配置](#飞书应用配置)
+- [飞书认证配置](#飞书认证配置)
 - [兼容的 LLM 服务](#兼容的-llm-服务)
 - [高级用法](#高级用法)
 - [项目结构](#项目结构)
@@ -54,7 +54,7 @@
 ```
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │  飞书知识库   │────▶│  文档内容获取  │────▶│  LLM 处理     │────▶│  FAISS 索引   │
-│  (Wiki API)  │     │  (Markdown)  │     │ 摘要+标签+嵌入 │     │  (本地存储)    │
+│  (lark-cli)  │     │  (Markdown)  │     │ 摘要+标签+嵌入 │     │  (本地存储)    │
 └─────────────┘     └──────────────┘     └──────────────┘     └──────┬───────┘
                                                                       │
                                                                       ▼
@@ -66,8 +66,8 @@
 
 **核心流程：**
 
-1. **扫描** — 通过飞书 Wiki API 递归遍历知识库空间，获取所有文档节点
-2. **获取** — 调用 Docs API 获取文档内容（Markdown 格式）
+1. **扫描** — 通过 lark-cli 递归遍历知识库空间，获取所有文档节点
+2. **获取** — 通过 lark-cli 获取文档内容（Markdown 格式）
 3. **处理** — 调用 LLM 生成摘要、标签，并生成向量嵌入
 4. **索引** — 将向量写入 FAISS 索引，元数据写入 JSON 文件
 5. **搜索** — 将查询文本转为向量，在 FAISS 中进行最近邻搜索
@@ -77,17 +77,18 @@
 ### 前置条件
 
 - Python >= 3.10
-- 飞书开放平台自建应用（需配置 API 权限）
+- Node.js >= 16（用于安装 lark-cli）
+- [lark-cli](https://github.com/larksuite/cli) — 飞书官方 CLI 工具（`npm install -g @larksuite/cli`）
 - OpenAI 兼容的 LLM 服务（用于生成摘要、标签和向量嵌入）
 
 ### 1. 安装
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/knowledge-indexer.git
+git clone https://github.com/peachgreenti/knowledge-indexer.git
 cd knowledge-indexer
 
-# 安装（推荐使用虚拟环境）
+# 安装 Python 依赖（推荐使用虚拟环境）
 python -m venv .venv
 source .venv/bin/activate  # Linux/macOS
 # .venv\Scripts\activate   # Windows
@@ -96,28 +97,39 @@ pip install -e .
 
 # 如需 GPU 加速（可选）
 pip install -e ".[gpu]"
+
+# 安装 lark-cli（飞书官方 CLI，用于调用飞书 API）
+npm install -g @larksuite/cli
 ```
 
-### 2. 配置
+### 2. 配置 lark-cli
+
+```bash
+# 初始化 lark-cli 配置
+lark-cli config init
+
+# 登录飞书账号（按提示完成认证）
+lark-cli auth login
+```
+
+### 3. 配置 knowledge-indexer
 
 ```bash
 # 生成 .env 配置模板
 knowledge-indexer init
 
-# 编辑 .env 文件，填入你的凭证
+# 编辑 .env 文件，填入你的配置
 vim .env  # 或使用其他编辑器
 ```
 
-`.env` 文件最少需要配置以下 4 项：
+`.env` 文件最少需要配置以下 2 项：
 
 ```env
-KI_FEISHU_APP_ID=cli_xxxxxxxxxx
-KI_FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
 KI_WIKI_SPACE_ID=xxxxxxxxxxxxxxxxxxxxxxxx
 KI_LLM_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-### 3. 验证知识库访问
+### 4. 验证知识库访问
 
 ```bash
 # 查看可访问的知识库空间列表
@@ -135,7 +147,7 @@ knowledge-indexer spaces
 └──────────────────┴──────────────────────────┴──────────────────────────┘
 ```
 
-### 4. 首次扫描构建索引
+### 5. 首次扫描构建索引
 
 ```bash
 # 扫描知识库并构建索引
@@ -148,7 +160,7 @@ knowledge-indexer scan --force
 knowledge-indexer scan --space-id 7987654321098765432
 ```
 
-### 5. 搜索
+### 6. 搜索
 
 ```bash
 # 单次搜索
@@ -267,10 +279,10 @@ knowledge-indexer status
 
 | 变量 | 说明 |
 |------|------|
-| `KI_FEISHU_APP_ID` | 飞书应用 App ID（在[飞书开放平台](https://open.feishu.cn)创建应用后获取） |
-| `KI_FEISHU_APP_SECRET` | 飞书应用 App Secret |
 | `KI_WIKI_SPACE_ID` | 要扫描的知识库空间 ID（运行 `spaces` 命令查看） |
 | `KI_LLM_API_KEY` | LLM 服务 API 密钥 |
+
+> **注意**：飞书 API 认证由 lark-cli 管理，无需在配置文件中填写飞书凭证。请先运行 `lark-cli auth login` 完成认证。
 
 ### 可选配置
 
@@ -286,7 +298,6 @@ knowledge-indexer status
 | `KI_MAX_CONTENT_LENGTH` | `8000` | 送入 LLM 的文档内容最大字符数 |
 | `KI_BATCH_SIZE` | `10` | 批量处理文档数量 |
 | `KI_SCHEDULE_INTERVAL_MINUTES` | `60` | 定时扫描间隔（分钟） |
-| `KI_FEISHU_REQUEST_TIMEOUT` | `30` | 飞书 API 请求超时（秒） |
 | `KI_LLM_REQUEST_TIMEOUT` | `60` | LLM API 请求超时（秒） |
 | `KI_MAX_RETRIES` | `3` | API 请求最大重试次数 |
 | `KI_RETRY_DELAY` | `1.0` | 重试间隔（秒） |
@@ -297,31 +308,41 @@ knowledge-indexer status
 > - `text-embedding-ada-002` → `1536`
 > - DeepSeek Embedding → `1536`
 
-## 飞书应用配置
+## 飞书认证配置
 
-### 1. 创建应用
+本项目通过 [lark-cli](https://github.com/larksuite/cli)（飞书官方 CLI）调用飞书 API，认证由 lark-cli 统一管理。
 
-1. 访问 [飞书开放平台](https://open.feishu.cn)
-2. 点击「创建企业自建应用」
-3. 记录 **App ID** 和 **App Secret**
+### 1. 安装 lark-cli
 
-### 2. 配置权限
+```bash
+npm install -g @larksuite/cli
+```
 
-在应用管理后台 → 「权限管理」中，申请以下权限：
+### 2. 初始化配置
+
+```bash
+lark-cli config init
+```
+
+按提示选择 API 提供方（如 `https://open.feishu.cn`）并创建自建应用。
+
+### 3. 登录认证
+
+```bash
+lark-cli auth login
+```
+
+按提示完成飞书账号认证。认证信息由 lark-cli 安全管理，knowledge-indexer 无需直接处理飞书凭证。
+
+### 4. 确保知识库访问权限
+
+确保 lark-cli 配置的应用具有以下权限，并且已被添加为目标知识库空间的成员：
 
 | 权限标识 | 权限名称 | 用途 |
 |----------|----------|------|
 | `wiki:space:readonly` | 查看知识库空间 | 列出可访问的知识库空间 |
 | `wiki:node:readonly` | 查看知识库节点 | 遍历知识库中的文档节点 |
 | `docx:document:readonly` | 查看文档内容 | 获取文档的 Markdown 内容 |
-
-### 3. 添加知识库成员
-
-将应用添加为目标知识库空间的成员（至少需要「可阅读」权限），否则无法获取空间内的文档内容。
-
-### 4. 发布应用
-
-权限配置完成后，创建应用版本并发布。管理员审批通过后即可使用。
 
 ## 兼容的 LLM 服务
 
@@ -433,7 +454,7 @@ knowledge-indexer/
         ├── cli.py              # CLI 入口（Click + Rich）
         ├── config.py           # 配置管理（Pydantic Settings）
         ├── models.py           # 数据模型定义
-        ├── feishu.py           # 飞书开放平台 API 客户端
+        ├── feishu.py           # 飞书 API 客户端（基于 lark-cli）
         ├── llm.py              # LLM 集成（摘要/标签/嵌入）
         ├── indexer.py          # 索引构建器（FAISS）
         ├── search.py           # 搜索引擎（向量检索）
@@ -446,7 +467,7 @@ knowledge-indexer/
 |------|------|------|
 | CLI 框架 | [Click](https://click.palletsprojects.com/) | 命令行解析和交互 |
 | 终端美化 | [Rich](https://rich.readthedocs.io/) | 彩色输出、表格、面板 |
-| HTTP 客户端 | [httpx](https://www.python-httpx.org/) | 飞书 API 请求 |
+| 飞书 API | [lark-cli](https://github.com/larksuite/cli) | 飞书官方 CLI，认证与 API 调用 |
 | LLM 客户端 | [OpenAI Python SDK](https://github.com/openai/openai-python) | 摘要/标签/嵌入生成 |
 | 向量索引 | [FAISS](https://github.com/facebookresearch/faiss) | 高性能向量相似度搜索 |
 | 数据验证 | [Pydantic v2](https://docs.pydantic.dev/) | 配置和数据模型验证 |
