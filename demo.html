@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>knowledge-indexer 端到端演示</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --bg-card: #111827;
+    --bg-terminal: #0d1117;
+    --fg: #e2e8f0;
+    --fg-muted: #8b949e;
+    --accent: #22d3ee;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --orange: #fb923c;
+    --red: #f87171;
+    --border: #1e293b;
+    --glow: rgba(34, 211, 238, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Noto Sans SC', sans-serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── 背景氛围 ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(34,211,238,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .bg-glow {
+    position: fixed; z-index: 0; pointer-events: none;
+    width: 600px; height: 600px; border-radius: 50%;
+    filter: blur(150px); opacity: 0.12;
+  }
+  .bg-glow-1 { top: -200px; left: -100px; background: var(--accent); }
+  .bg-glow-2 { bottom: -200px; right: -100px; background: var(--accent2); }
+
+  .container {
+    position: relative; z-index: 1;
+    max-width: 960px; margin: 0 auto;
+    padding: 60px 24px 100px;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 72px;
+    animation: fadeUp 0.8s ease-out;
+  }
+  .hero-badge {
+    display: inline-block;
+    padding: 4px 16px; border-radius: 20px;
+    background: rgba(34,211,238,0.1);
+    border: 1px solid rgba(34,211,238,0.25);
+    color: var(--accent); font-size: 13px; font-weight: 600;
+    letter-spacing: 1px; margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: 42px; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+  .hero p {
+    color: var(--fg-muted); font-size: 16px; max-width: 520px; margin: 0 auto;
+  }
+  .hero-tech {
+    display: flex; justify-content: center; gap: 12px; margin-top: 24px; flex-wrap: wrap;
+  }
+  .tech-tag {
+    padding: 4px 12px; border-radius: 6px; font-size: 12px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--fg-muted); font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── 流程步骤 ── */
+  .step {
+    margin-bottom: 56px;
+    animation: fadeUp 0.6s ease-out both;
+  }
+  .step:nth-child(2) { animation-delay: 0.1s; }
+  .step:nth-child(3) { animation-delay: 0.2s; }
+  .step:nth-child(4) { animation-delay: 0.3s; }
+  .step:nth-child(5) { animation-delay: 0.4s; }
+  .step:nth-child(6) { animation-delay: 0.5s; }
+  .step:nth-child(7) { animation-delay: 0.6s; }
+
+  .step-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 16px;
+  }
+  .step-num {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600; font-size: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: var(--bg); flex-shrink: 0;
+  }
+  .step-title {
+    font-size: 20px; font-weight: 600;
+  }
+  .step-desc {
+    color: var(--fg-muted); font-size: 14px; margin-bottom: 16px;
+    padding-left: 50px;
+  }
+
+  /* ── 终端 ── */
+  .terminal {
+    background: var(--bg-terminal);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .terminal-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+  }
+  .terminal-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+  }
+  .terminal-dot:nth-child(1) { background: #ff5f57; }
+  .terminal-dot:nth-child(2) { background: #febc2e; }
+  .terminal-dot:nth-child(3) { background: #28c840; }
+  .terminal-title {
+    flex: 1; text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--fg-muted);
+  }
+  .terminal-body {
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; line-height: 1.8;
+    overflow-x: auto;
+  }
+  .terminal-body .cmd {
+    color: var(--accent);
+  }
+  .terminal-body .cmd::before {
+    content: '$ ';
+    color: var(--green);
+  }
+  .terminal-body .output {
+    color: var(--fg-muted);
+    white-space: pre-wrap;
+  }
+  .terminal-body .highlight {
+    color: var(--green);
+  }
+  .terminal-body .warn {
+    color: var(--orange);
+  }
+  .terminal-body .accent {
+    color: var(--accent);
+  }
+  .terminal-body .accent2 {
+    color: var(--accent2);
+  }
+  .terminal-body .bold {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .terminal-body .dim {
+    color: #4b5563;
+  }
+
+  /* ── 搜索结果卡片 ── */
+  .search-results {
+    display: flex; flex-direction: column; gap: 16px;
+    margin-top: 16px;
+  }
+  .result-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .result-card:hover {
+    border-color: rgba(34,211,238,0.3);
+    box-shadow: 0 0 20px var(--glow);
+  }
+  .result-rank {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; margin-bottom: 8px;
+  }
+  .rank-badge {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 11px;
+  }
+  .rank-1 { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
+  .rank-2 { background: linear-gradient(135deg, #94a3b8, #64748b); color: #000; }
+  .rank-3 { background: linear-gradient(135deg, #b45309, #92400e); color: #fff; }
+  .result-title {
+    font-size: 15px; font-weight: 600; margin-bottom: 6px;
+  }
+  .result-summary {
+    font-size: 13px; color: var(--fg-muted); line-height: 1.6;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .result-meta {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 10px; font-size: 12px; color: var(--fg-muted);
+    flex-wrap: wrap;
+  }
+  .similarity {
+    padding: 2px 10px; border-radius: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600; font-size: 12px;
+  }
+  .sim-high { background: rgba(52,211,153,0.15); color: var(--green); }
+  .sim-mid { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .tag {
+    padding: 2px 8px; border-radius: 4px;
+    background: rgba(167,139,250,0.12); color: var(--accent2);
+    font-size: 11px;
+  }
+
+  /* ── 架构图 ── */
+  .arch-flow {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; flex-wrap: wrap; padding: 24px 0;
+  }
+  .arch-node {
+    padding: 14px 20px; border-radius: 10px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    text-align: center; min-width: 120px;
+  }
+  .arch-node .icon { font-size: 24px; margin-bottom: 6px; }
+  .arch-node .label { font-size: 13px; font-weight: 600; }
+  .arch-node .sub { font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+  .arch-arrow {
+    font-size: 20px; color: var(--accent); padding: 0 8px;
+  }
+
+  /* ── 统计面板 ── */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin-top: 16px;
+  }
+  .stat-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; text-align: center;
+  }
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label {
+    font-size: 12px; color: var(--fg-muted); margin-top: 4px;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center; margin-top: 72px;
+    padding-top: 32px; border-top: 1px solid var(--border);
+  }
+  .footer p { color: var(--fg-muted); font-size: 13px; }
+  .footer a { color: var(--accent); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 28px; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .arch-flow { flex-direction: column; }
+    .arch-arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">TRAE SOLO 挑战赛</div>
+    <h1>knowledge-indexer</h1>
+    <p>飞书知识库智能索引 CLI 工具 — 端到端效果演示</p>
+    <div class="hero-tech">
+      <span class="tech-tag">Python 3.12</span>
+      <span class="tech-tag">lark-cli</span>
+      <span class="tech-tag">FAISS</span>
+      <span class="tech-tag">豆包 Pro</span>
+      <span class="tech-tag">BAAI/bge-m3</span>
+    </div>
+  </div>
+
+  <!-- 架构概览 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">0</div>
+      <div class="step-title">技术架构</div>
+    </div>
+    <div class="arch-flow">
+      <div class="arch-node">
+        <div class="icon">📚</div>
+        <div class="label">飞书知识库</div>
+        <div class="sub">lark-cli</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="icon">📄</div>
+        <div class="label">文档内容</div>
+        <div class="sub">Markdown</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="icon">🤖</div>
+        <div class="label">LLM 处理</div>
+        <div class="sub">摘要+标签+嵌入</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="icon">🔍</div>
+        <div class="label">FAISS 索引</div>
+        <div class="sub">本地向量存储</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="icon">💬</div>
+        <div class="label">语义搜索</div>
+        <div class="sub">自然语言查询</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1: init -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">初始化配置</div>
+    </div>
+    <div class="step-desc">运行 <code>knowledge-indexer init</code> 生成 .env 配置模板，填入知识库空间 ID、LLM API Key 和嵌入模型配置。</div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-title">bash — knowledge-indexer init</div>
+      </div>
+      <div class="terminal-body">
+<span class="cmd">knowledge-indexer init</span>
+<span class="output">✅ 配置模板已生成: .env
+
+┌─────────────────────────────────────────────────┐
+│ <span class="highlight">配置初始化完成</span>                                    │
+│                                                 │
+│ 请编辑 .env 文件，填入你的 LLM API 密钥和       │
+│ 知识库空间 ID。                                  │
+│                                                 │
+│ 前置条件:                                       │
+│   1. 安装并配置 lark-cli                        │
+│   2. 运行 lark-cli auth login                   │
+└─────────────────────────────────────────────────┘</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: spaces -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">查看知识库空间</div>
+    </div>
+    <div class="step-desc">运行 <code>knowledge-indexer spaces</code> 列出所有可访问的飞书知识库空间，选择要扫描的目标空间。</div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-title">bash — knowledge-indexer spaces</div>
+      </div>
+      <div class="terminal-body">
+<span class="cmd">knowledge-indexer spaces</span>
+<span class="output">可访问的知识库空间（共 7 个）:
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ <span class="bold">名称</span>                           ┃ <span class="bold">Space ID</span>                 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ 📁 庄工的笔记                  │ 7****07923               │
+│ 📁 智造在线                    │ 7****2083               │
+│ 📁 产品部门                    │ 7****54241              │
+│ 📁 闲鱼实战知识库              │ 7****77412              │
+│ 📁 知识库                      │ 7****4951               │
+│ 📁 庄工专栏                    │ 7****07923               │
+│ 📁 测试空间                    │ 7****07923               │
+└────────────────────────────────┴──────────────────────────┘</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: scan -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">扫描知识库 & 构建索引</div>
+    </div>
+    <div class="step-desc">运行 <code>knowledge-indexer scan</code>，自动遍历知识库所有文档，调用豆包 Pro 生成摘要和标签，调用硅基流动 BAAI/bge-m3 生成向量嵌入，构建 FAISS 索引。</div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-title">bash — knowledge-indexer scan</div>
+      </div>
+      <div class="terminal-body">
+<span class="cmd">knowledge-indexer scan</span>
+<span class="output"><span class="dim">[INFO] 开始扫描知识库空间: 7****07923</span>
+<span class="dim">[INFO] 正在遍历知识库节点...</span>
+<span class="dim">[INFO] 发现 8 个文档节点</span>
+
+<span class="accent">📄 [1/8] 3天合同整理任务，半小时轻松完成！</span>
+<span class="dim">  ├─ 获取文档内容... 3,842 字</span>
+<span class="dim">  ├─ 生成摘要... ✅</span>
+<span class="dim">  ├─ 生成标签... ✅ [合同整理, 飞书表格, AI提效, 合同信息提取, 火山引擎]</span>
+<span class="dim">  └─ 生成嵌入向量... ✅ (1024维)</span>
+
+<span class="accent">📄 [2/8] 别再浪费钱了！这个免费方法，能让AI写出带你自己公司"味道"的标书</span>
+<span class="dim">  ├─ 获取文档内容... 5,127 字</span>
+<span class="dim">  ├─ 生成摘要... ✅</span>
+<span class="dim">  ├─ 生成标签... ✅ [AI写标书, 标书知识库, Coze技能, 投标文件编写]</span>
+<span class="dim">  └─ 生成嵌入向量... ✅ (1024维)</span>
+
+<span class="dim">  ... (省略中间文档) ...</span>
+
+<span class="accent">📄 [8/8] 灵隐寺驾驶舱复刻</span>
+<span class="dim">  ├─ 获取文档内容... 2,156 字</span>
+<span class="dim">  ├─ 生成摘要... ✅</span>
+<span class="dim">  ├─ 生成标签... ✅ [灵隐寺驾驶舱, 飞书多维表格, 大屏复刻, 数字化大屏, 驾驶舱制作]</span>
+<span class="dim">  └─ 生成嵌入向量... ✅ (1024维)</span>
+
+<span class="highlight">✅ 扫描完成！成功: 8, 失败: 0, 跳过: 0</span>
+<span class="dim">索引已保存至 /root/.knowledge-indexer</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: search -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div class="step-title">语义搜索演示</div>
+    </div>
+    <div class="step-desc">用自然语言查询知识库，支持语义匹配和标签过滤。以下展示 3 个不同类型的搜索场景。</div>
+
+    <!-- 搜索场景 1 -->
+    <div class="terminal" style="margin-bottom: 20px;">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-title">场景 1 — 合同整理</div>
+      </div>
+      <div class="terminal-body">
+<span class="cmd">knowledge-indexer search "如何用AI自动整理合同" -k 3</span>
+<span class="output"><span class="dim">已加载 8 个文档的索引</span></span>
+      </div>
+    </div>
+    <div class="search-results">
+      <div class="result-card">
+        <div class="result-rank">
+          <span class="rank-badge rank-1">1</span>
+          <span class="similarity sim-high">相似度 0.6904</span>
+        </div>
+        <div class="result-title">3天合同整理任务，半小时轻松完成！</div>
+        <div class="result-summary">介绍了利用飞书多维表格快速完成合同整理任务的方法。群友需提取 300 多份合同关键信息，人工至少需 3 天且易失误，而用飞书多维表格配置仅半小时。</div>
+        <div class="result-meta">
+          <span class="tag">合同整理</span>
+          <span class="tag">飞书表格</span>
+          <span class="tag">AI提效</span>
+          <span class="tag">合同信息提取</span>
+          <span class="tag">火山引擎</span>
+        </div>
+      </div>
+      <div class="result-card">
+        <div class="result-rank">
+          <span class="rank-badge rank-2">2</span>
+          <span class="similarity sim-mid">相似度 0.5712</span>
+        </div>
+        <div class="result-title">别再浪费钱了！这个免费方法，能让AI写出带你自己公司"味道"的标书</div>
+        <div class="result-summary">介绍让 AI 写出带公司"味道"标书的免费方法。可将公司信息等打包为知识库解决内容不符问题。</div>
+        <div class="result-meta">
+          <span class="tag">AI写标书</span>
+          <span class="tag">标书知识库</span>
+          <span class="tag">Coze技能</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 搜索场景 2 -->
+    <div class="terminal" style="margin-top: 24px; margin-bottom: 20px;">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-title">场景 2 — 版权保护</div>
+      </div>
+      <div class="terminal-body">
+<span class="cmd">knowledge-indexer search "怎么保护原创内容不被抄袭" -k 2</span>
+<span class="output"><span class="dim">已加载 8 个文档的索引</span></span>
+      </div>
+    </div>
+    <div class="search-results">
+      <div class="result-card">
+        <div class="result-rank">
+          <span class="rank-badge rank-1">1</span>
+          <span class="similarity sim-high">相似度 0.6083</span>
+        </div>
+        <div class="result-title">内容产品版权保护指南</div>
+        <div class="result-summary">针对普通创作者特点，提供全流程版权保护解决方案。涵盖版权基础认知、事前防御体系、过程留痕与证据留存、版权声明与许可协议、多维度防伪标记等。</div>
+        <div class="result-meta">
+          <span class="tag">内容产品</span>
+          <span class="tag">版权保护</span>
+          <span class="tag">创作维权</span>
+          <span class="tag">蜜罐技术</span>
+          <span class="tag">版权声明</span>
+          <span class="tag">侵权情形</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 搜索场景 3 -->
+    <div class="terminal" style="margin-top: 24px; margin-bottom: 20px;">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-title">场景 3 — 标签过滤</div>
+      </div>
+      <div class="terminal-body">
+<span class="cmd">knowledge-indexer search "飞书" -t "AI提效" -k 2</span>
+<span class="output"><span class="dim">已加载 8 个文档的索引</span></span>
+      </div>
+    </div>
+    <div class="search-results">
+      <div class="result-card">
+        <div class="result-rank">
+          <span class="rank-badge rank-1">1</span>
+          <span class="similarity sim-mid">相似度 0.4886</span>
+        </div>
+        <div class="result-title">3天合同整理任务，半小时轻松完成！</div>
+        <div class="result-summary">利用飞书多维表格快速完成合同整理任务，AI 提取合同关键信息。</div>
+        <div class="result-meta">
+          <span class="tag">合同整理</span>
+          <span class="tag">飞书表格</span>
+          <span class="tag" style="background:rgba(34,211,238,0.15);color:var(--accent);">AI提效 ✓</span>
+          <span class="tag">合同信息提取</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 5: tags -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div class="step-title">标签统计</div>
+    </div>
+    <div class="step-desc">运行 <code>knowledge-indexer tags</code> 查看 LLM 自动生成的标签分布。</div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-title">bash — knowledge-indexer tags</div>
+      </div>
+      <div class="terminal-body">
+<span class="cmd">knowledge-indexer tags</span>
+<span class="output">标签统计（共 39 个标签）
+┏━━━━━━━━━━━━━━┳━━━━━━━━┓
+┃ <span class="bold">标签</span>         ┃ <span class="bold">文档数</span> ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━┩
+│ <span class="accent">AI提效</span>       │ <span class="highlight">2</span>      │
+│ <span class="accent">飞书表格</span>     │ <span class="highlight">2</span>      │
+│ 庄工介绍     │ 1      │
+│ 软件开发     │ 1      │
+│ 产品推广     │ 1      │
+│ 社交平台     │ 1      │
+│ 内容产品     │ 1      │
+│ 版权保护     │ 1      │
+│ 创作维权     │ 1      │
+│ 蜜罐技术     │ 1      │
+│ AI写标书     │ 1      │
+│ 标书知识库   │ 1      │
+│ Coze技能     │ 1      │
+│ 合同整理     │ 1      │
+│ 热点日报     │ 1      │
+│ 智能体搭建   │ 1      │
+│ ... (共 39 个标签)       │
+└──────────────┴────────┘</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 6: status -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">6</div>
+      <div class="step-title">索引状态</div>
+    </div>
+    <div class="step-desc">运行 <code>knowledge-indexer status</code> 查看索引健康状态。</div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-title">bash — knowledge-indexer status</div>
+      </div>
+      <div class="terminal-body">
+<span class="cmd">knowledge-indexer status</span>
+<span class="output">                 索引状态
+┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ <span class="bold">项目</span>       ┃ <span class="bold">值</span>                         ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ 索引目录   │ /root/.knowledge-indexer   │
+│ FAISS 索引 │ <span class="highlight">✅</span>                         │
+│ 元数据文件 │ <span class="highlight">✅</span>                         │
+│ 状态文件   │ <span class="highlight">✅</span>                         │
+│ 上次扫描   │ 2026-04-20T23:07:00        │
+│ 已索引文档 │ <span class="accent">8</span>                          │
+│ 元数据记录 │ <span class="accent">8</span>                          │
+└────────────┴────────────────────────────┘</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 统计面板 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">★</div>
+      <div class="step-title">演示效果总结</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">8/8</div>
+        <div class="stat-label">文档索引成功率</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">0.69</div>
+        <div class="stat-label">最高语义相似度</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">~2min</div>
+        <div class="stat-label">全量扫描耗时</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>
+      🚀 Powered by <a href="https://github.com/peachgreenti/knowledge-indexer" target="_blank">knowledge-indexer</a> |
+      Built with TRAE SOLO
+    </p>
+  </div>
+
+</div>
+
+</body>
+</html>
